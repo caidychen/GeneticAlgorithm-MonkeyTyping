@@ -10,13 +10,16 @@
 #import "Population.h"
 #import "DNA.h"
 
-@interface MainViewController ()
+@interface MainViewController (){
+    NSString *targetString;
+    BOOL running;
+}
 @property (nonatomic, strong) Population *population;
-@property (nonatomic, strong) UILabel *textLabel, *poolLabel;
+@property (nonatomic, strong) UILabel *targetLabel, *textLabel, *poolLabel;
 @property (nonatomic, strong) NSTimer *timer;
 @end
 
-static NSString *targetString = @"jesus take the wheel";
+//static NSString *targetString = @"jesus take the wheel";
 static NSInteger poolSize = 500;
 static float mutating = 0.01;
 
@@ -28,16 +31,14 @@ static float mutating = 0.01;
     // Do any additional setup after loading the view.
     
 
-    UILabel *targetLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 300)];
-    targetLabel.textColor = [UIColor whiteColor];
-    targetLabel.textAlignment = NSTextAlignmentCenter;
-    targetLabel.font = [UIFont systemFontOfSize:25];
-    targetLabel.text = targetString;
-    [self.view addSubview:targetLabel];
+    self.targetLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 300)];
+    self.targetLabel.textColor = [UIColor whiteColor];
+    self.targetLabel.textAlignment = NSTextAlignmentCenter;
+    self.targetLabel.font = [UIFont systemFontOfSize:25];
     
-    self.population = [[Population alloc] initWithTarget:targetString poolSize:poolSize mutatingProbability:mutating];
+    [self.view addSubview:self.targetLabel];
     
-    [self.population calculateFitness];
+    
     
     self.textLabel = [[UILabel alloc] initWithFrame:self.view.bounds];
     self.textLabel.numberOfLines = 0;
@@ -52,13 +53,50 @@ static float mutating = 0.01;
     self.poolLabel.textColor = [UIColor whiteColor];
     self.poolLabel.textAlignment = NSTextAlignmentCenter;
     
-    
-    self.timer = [NSTimer scheduledTimerWithTimeInterval:0.02 target:self selector:@selector(loop) userInfo:nil repeats:YES];
-    [self.timer fire];
+    [self.view addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleInputText)]];
     
 }
 
+-(void)viewDidAppear:(BOOL)animated{
+    [super viewDidAppear:animated];
+    [self toggleInputText];
+}
+
+-(void)toggleInputText{
+    if (running) {
+        return;
+    }
+    UIAlertController * alertController = [UIAlertController alertControllerWithTitle: @"Target words"
+                                                                              message: @"Type in any words or phrases"
+                                                                       preferredStyle:UIAlertControllerStyleAlert];
+    [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"Words";
+        textField.textColor = [UIColor blueColor];
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+        textField.borderStyle = UITextBorderStyleRoundedRect;
+    }];
+    
+    [alertController addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSArray * textfields = alertController.textFields;
+        UITextField * namefield = textfields[0];
+        targetString = namefield.text;
+        self.targetLabel.text = targetString;
+        self.population = [[Population alloc] initWithTarget:targetString poolSize:poolSize mutatingProbability:mutating];
+        [self.population calculateFitness];
+        [self startAI];
+    }]];
+    [self presentViewController:alertController animated:YES completion:nil];
+}
+
+-(void)startAI{
+    self.textLabel.textColor = [UIColor whiteColor];
+    self.timer = [NSTimer scheduledTimerWithTimeInterval:0.02 target:self selector:@selector(loop) userInfo:nil repeats:YES];
+    [self.timer fire];
+
+}
+
 -(void)loop{
+    running = YES;
     NSDictionary *resultDict;
     [self.population naturalSelection];
     [self.population generateNextPopulation];
@@ -79,12 +117,13 @@ static float mutating = 0.01;
     self.poolLabel.text = result;
     
     resultDict = [self.population evaluate];
-    self.textLabel.text = [NSString stringWithFormat:@"%@\n\n相似度:%zd%%",[resultDict objectForKey:@"codes"],[[resultDict objectForKey:@"fitness"] integerValue]];
+    self.textLabel.text = [NSString stringWithFormat:@"%@\n\nsimilarity:%zd%%",[resultDict objectForKey:@"codes"],[[resultDict objectForKey:@"fitness"] integerValue]];
 
     if ([[resultDict objectForKey:@"codes"] isEqualToString:targetString]){
         NSLog(@"result: %@",[resultDict objectForKey:@"codes"]);
         self.textLabel.textColor = [UIColor greenColor];
         [self.timer invalidate];
+        running = NO;
     }
 
 }
