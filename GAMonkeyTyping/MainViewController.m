@@ -13,6 +13,8 @@
 @interface MainViewController (){
     NSString *targetString;
     BOOL running;
+    NSInteger poolSize;
+    float mutating;
 }
 @property (nonatomic, strong) Population *population;
 @property (nonatomic, strong) UILabel *targetLabel, *textLabel, *poolLabel;
@@ -20,8 +22,7 @@
 @end
 
 //static NSString *targetString = @"jesus take the wheel";
-static NSInteger poolSize = 500;
-static float mutating = 0.01;
+
 
 @implementation MainViewController
 
@@ -71,7 +72,23 @@ static float mutating = 0.01;
                                                                        preferredStyle:UIAlertControllerStyleAlert];
     [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
         textField.placeholder = @"Words";
-        textField.textColor = [UIColor blueColor];
+        textField.textColor = [UIColor blackColor];
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+        textField.borderStyle = UITextBorderStyleRoundedRect;
+    }];
+    
+    [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"Population (default: 500)";
+        textField.textColor = [UIColor blackColor];
+        textField.keyboardType = UIKeyboardTypeNumberPad;
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+        textField.borderStyle = UITextBorderStyleRoundedRect;
+    }];
+    
+    [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"Mutation Rate (default: 0.01)";
+        textField.textColor = [UIColor blackColor];
+        textField.keyboardType = UIKeyboardTypeDecimalPad;
         textField.clearButtonMode = UITextFieldViewModeWhileEditing;
         textField.borderStyle = UITextBorderStyleRoundedRect;
     }];
@@ -79,7 +96,19 @@ static float mutating = 0.01;
     [alertController addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSArray * textfields = alertController.textFields;
         UITextField * namefield = textfields[0];
+        UITextField *pop = textfields[1];
+        UITextField *mut = textfields[2];
         targetString = namefield.text;
+        if (pop.text.length > 0) {
+            poolSize = [pop.text integerValue];
+        }else{
+            poolSize = 500;
+        }
+        if (mut.text.length > 0) {
+            mutating = [mut.text floatValue];
+        }else{
+            mutating = 0.01;
+        }
         self.targetLabel.text = targetString;
         self.population = [[Population alloc] initWithTarget:targetString poolSize:poolSize mutatingProbability:mutating];
         [self.population calculateFitness];
@@ -101,24 +130,23 @@ static float mutating = 0.01;
     [self.population naturalSelection];
     [self.population generateNextPopulation];
     [self.population calculateFitness];
-    
-    NSString *result = @"";
-    BOOL flag = false;
-    for (DNA *dna in self.population.population){
-        result = [result stringByAppendingString:[dna getStringRepresentation]];
-        if (!flag) {
-            result = [result stringByAppendingString:@"   "];
-        }else{
-            result = [result stringByAppendingString:@"\n"];
-        }
-        flag = !flag;
-        
-    }
-    self.poolLabel.text = result;
-    
     resultDict = [self.population evaluate];
-    self.textLabel.text = [NSString stringWithFormat:@"%@\n\nsimilarity:%zd%%",[resultDict objectForKey:@"codes"],[[resultDict objectForKey:@"fitness"] integerValue]];
-
+    
+    
+    self.textLabel.text = [NSString stringWithFormat:@"%@\n\nCompletion: %zd%%",[resultDict objectForKey:@"codes"],[[resultDict objectForKey:@"fitness"] integerValue]];
+//    NSString *result = @"";
+//    BOOL flag = false;
+//    for (DNA *dna in self.population.population){
+//        result = [result stringByAppendingString:[dna getStringRepresentation]];
+//        if (!flag) {
+//            result = [result stringByAppendingString:@"   "];
+//        }else{
+//            result = [result stringByAppendingString:@"\n"];
+//        }
+//        flag = !flag;
+//    }
+//    self.poolLabel.text = result;
+    
     if ([[resultDict objectForKey:@"codes"] isEqualToString:targetString]){
         NSLog(@"result: %@",[resultDict objectForKey:@"codes"]);
         self.textLabel.textColor = [UIColor greenColor];
